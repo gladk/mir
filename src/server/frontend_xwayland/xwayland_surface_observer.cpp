@@ -23,7 +23,7 @@
 #include "wayland_input_dispatcher.h"
 
 #include <mir/executor.h>
-#include <mir/events/event_builders.h>
+#include <mir/events/event_helpers.h>
 
 #include <mir/log.h>
 
@@ -94,7 +94,7 @@ void mf::XWaylandSurfaceObserver::input_consumed(ms::Surface const*, std::shared
     {
         // Must clone the event so we can scale the positions to XWayland scale
         std::shared_ptr<MirEvent> owned_event = mev::clone_event(*event);
-        mev::scale_positions(*owned_event, scale);
+        mev::scale_local_position(*owned_event, scale);
 
         aquire_input_dispatcher(
             [owned_event](auto input_dispatcher)

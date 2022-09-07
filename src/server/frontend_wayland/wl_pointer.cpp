@@ -311,9 +311,10 @@ void mf::WlPointer::axes(MirPointerEvent const* event)
 
 void mf::WlPointer::enter_or_motion(MirPointerEvent const* event, WlSurface& root_surface)
 {
-    auto const root_position = std::make_pair(
-        mir_pointer_event_axis_value(event, mir_pointer_axis_x),
-        mir_pointer_event_axis_value(event, mir_pointer_axis_y));
+    if (!event->local_position())
+        return;
+
+    auto const root_position = event->local_position().value();
 
     WlSurface* target_surface;
     if (current_buttons != 0 && surface_under_cursor)
@@ -324,14 +325,11 @@ void mf::WlPointer::enter_or_motion(MirPointerEvent const* event, WlSurface& roo
     else
     {
         // Else choose whatever subsurface we are over top of
-        geom::Point root_point{root_position.first, root_position.second};
+        geom::Point root_point{root_position};
         target_surface = root_surface.subsurface_at(root_point).value_or(&root_surface);
     }
 
-    auto const offset = target_surface->total_offset();
-    auto const position_on_target = std::make_pair(
-        root_position.first - offset.dx.as_int(),
-        root_position.second - offset.dy.as_int());
+    auto const position_on_target = root_position - geom::DisplacementF{target_surface->total_offset()};
 
     if (!surface_under_cursor || &surface_under_cursor.value() != target_surface)
     {
@@ -342,8 +340,8 @@ void mf::WlPointer::enter_or_motion(MirPointerEvent const* event, WlSurface& roo
         send_enter_event(
             serial,
             target_surface->raw_resource(),
-            position_on_target.first,
-            position_on_target.second);
+            position_on_target.x.as_value(),
+            position_on_target.y.as_value());
         current_position = position_on_target;
         needs_frame = true;
         destroy_listener_id = target_surface->add_destroy_listener(
@@ -365,8 +363,8 @@ void mf::WlPointer::enter_or_motion(MirPointerEvent const* event, WlSurface& roo
         default:
             send_motion_event(
                 timestamp_of(event),
-                position_on_target.first,
-                position_on_target.second);
+                position_on_target.x.as_value(),
+                position_on_target.y.as_value());
             current_position = position_on_target;
             needs_frame = true;
         }
